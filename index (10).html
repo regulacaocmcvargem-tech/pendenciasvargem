@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Controle - Distrito Sanitário Vargem das Flores</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Cabeçalho com Gradiente -->
+    <header class="header">
+        <div class="header-content">
+            <h1 class="header-title">DIRETORIA DE REGULAÇÃO</h1>
+            <h2 class="header-subtitle">Controle de Pendências - Sistema Vivver</h2>
+            <h3 class="header-subtitle">Central de Marcação de Consultas / Distrito Sanitário Vargem das Flores</h3>
+            <p class="footer-credits">Referência Giovanna - Marcadora Carolina Telefone - 3198-6758</p>
+            <p class="footer-credits">Página Criada por Ana P. A. Silva Matr:201704/Assistente Adm. Diretoria de Regulação - Ceaps</p>
+        </div>
+    </header>
+
+    <!-- Container Principal -->
+    <div class="container">
+
+        <!-- Barra de Status e Ações -->
+        <div class="top-actions">
+            <div class="connection-status">
+                <span class="status-dot"></span>
+                <span class="status-text">Conectado</span>
+            </div>
+            <div class="action-buttons">
+                <button class="btn btn-refresh" onclick="refreshData()">
+                    <i class="fas fa-sync-alt"></i> Atualizar
+                </button>
+                <button class="btn btn-excel" onclick="downloadExcel()">
+                    <i class="fas fa-file-excel"></i> Excel
+                </button>
+            </div>
+        </div>
+
+        <!-- Cards de Métricas -->
+        <div class="cards-grid cards-grid-top">
+            <div class="top-card top-card-blue">
+                <div class="top-card-label">TOTAL DE PENDÊNCIAS - REGISTROS GERAL</div>
+                <div class="top-card-value" id="totalRegistrosGeral">0</div>
+            </div>
+
+            <div class="top-card top-card-green">
+                <div class="top-card-label">TOTAL DE PENDÊNCIAS<br>A RESPONDER</div>
+                <div class="top-card-value" id="totalPendencias">0</div>
+            </div>
+
+            <div class="top-card top-card-purple">
+                <div class="top-card-label">REGISTROS DE PENDÊNCIAS<br>RESOLVIDAS</div>
+                <div class="top-card-value" id="pendenciasResolvidas">0</div>
+            </div>
+
+            <div class="top-card top-card-orange">
+                <div class="top-card-label">REGISTROS DE PENDÊNCIAS<br>AGENDADAS</div>
+                <div class="top-card-value" id="pendenciasAgendadas">0</div>
+            </div>
+
+            <div class="top-card top-card-red">
+                <div class="top-card-label">REGISTROS DE PENDÊNCIAS CANCELADAS POR VENCIMENTO DO PRAZO</div>
+                <div class="top-card-value" id="pendenciasCanceladasVencimento">0</div>
+            </div>
+
+            <div class="top-card top-card-gray">
+                <div class="top-card-label">REGISTROS DE PENDÊNCIAS<br>CANCELADAS/GERAL</div>
+                <div class="top-card-value" id="pendenciasCanceladasGeral">0</div>
+            </div>
+
+            <div class="top-card top-card-cyan">
+                <div class="top-card-label">PORCENTAGEM<br>FILTRADA</div>
+                <div class="top-card-value" id="percentFiltrados">100.0%</div>
+            </div>
+        </div>
+
+        <!-- Seção de Filtros -->
+        <div class="filters-container">
+            <h3 class="section-title">
+                <i class="fas fa-filter"></i> Filtros
+            </h3>
+
+            <div class="filters-grid">
+                <!-- STATUS (multi) -->
+                <div class="filter-box">
+                    <label>Status:</label>
+                    <div class="multi-select" id="msStatus">
+                        <button type="button" class="multi-select-btn" onclick="toggleMultiSelect('msStatus')">
+                            <span class="multi-select-text" id="msStatusText">Todos</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="multi-select-panel" id="msStatusPanel"></div>
+                    </div>
+                </div>
+
+                <!-- UNIDADE (multi) -->
+                <div class="filter-box">
+                    <label>Unidade Solicitante:</label>
+                    <div class="multi-select" id="msUnidade">
+                        <button type="button" class="multi-select-btn" onclick="toggleMultiSelect('msUnidade')">
+                            <span class="multi-select-text" id="msUnidadeText">Todas</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="multi-select-panel" id="msUnidadePanel"></div>
+                    </div>
+                </div>
+
+                <!-- ESPECIALIDADE (multi) -->
+                <div class="filter-box">
+                    <label>CBO Especialidade:</label>
+                    <div class="multi-select" id="msEspecialidade">
+                        <button type="button" class="multi-select-btn" onclick="toggleMultiSelect('msEspecialidade')">
+                            <span class="multi-select-text" id="msEspecialidadeText">Todas</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="multi-select-panel" id="msEspecialidadePanel"></div>
+                    </div>
+                </div>
+
+                <!-- PRESTADOR (multi) -->
+                <div class="filter-box">
+                    <label>Prestador:</label>
+                    <div class="multi-select" id="msPrestador">
+                        <button type="button" class="multi-select-btn" onclick="toggleMultiSelect('msPrestador')">
+                            <span class="multi-select-text" id="msPrestadorText">Todos</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="multi-select-panel" id="msPrestadorPanel"></div>
+                    </div>
+                </div>
+
+                <!-- FILTRO POR MÊS -->
+                <div class="filter-box">
+                    <label>Filtrar por Mês:</label>
+                    <div class="multi-select" id="msMes">
+                        <button type="button" class="multi-select-btn" onclick="toggleMultiSelect('msMes')">
+                            <span class="multi-select-text" id="msMesText">Todos os Meses</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="multi-select-panel" id="msMesPanel"></div>
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn btn-clear" onclick="clearFilters()">
+                <i class="fas fa-times-circle"></i> Limpar Filtros
+            </button>
+        </div>
+
+        <!-- Gráficos -->
+        <div class="charts-container">
+            <!-- LINHA 1 -->
+            <div class="chart-box">
+                <h3 class="chart-title">Pendências Não Resolvidas por Unidade de Saúde</h3>
+                <div class="chart-wrapper">
+                    <canvas id="chartPendenciasNaoResolvidasUnidade"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-box">
+                <h3 class="chart-title">Registros de Pendências Resolvidas por Unidade</h3>
+                <div class="chart-wrapper">
+                    <canvas id="chartUnidades"></canvas>
+                </div>
+            </div>
+
+            <!-- LINHA 2 -->
+            <div class="chart-box">
+                <h3 class="chart-title">Registros de Pendências Resolvidas por Especialidade</h3>
+                <div class="chart-wrapper">
+                    <canvas id="chartEspecialidades"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-box">
+                <h3 class="chart-title">Registros de Pendências Não Resolvidas por Especialidade</h3>
+                <div class="chart-wrapper">
+                    <canvas id="chartEspecialidadesNaoResolvidas"></canvas>
+                </div>
+            </div>
+
+            <!-- LINHA 3 -->
+            <div class="chart-box">
+                <h3 class="chart-title">Registros por Status</h3>
+                <div class="chart-wrapper chart-wrapper-status">
+                    <canvas id="chartStatus"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-box">
+                <h3 class="chart-title">Quantidade de Pendências por Prestador</h3>
+                <div class="chart-wrapper">
+                    <canvas id="chartPendenciasPrestador"></canvas>
+                </div>
+            </div>
+
+            <!-- LINHA 4 - REORGANIZADA -->
+            <div class="chart-box">
+                <h3 class="chart-title">Quantidade de Pendências por Mês</h3>
+                <div class="chart-wrapper">
+                    <canvas id="chartPendenciasMes"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-box">
+                <h3 class="chart-title">Distribuição Percentual por Status</h3>
+                <div class="chart-wrapper chart-wrapper-pizza">
+                    <canvas id="chartPizzaStatus"></canvas>
+                </div>
+            </div>
+
+            <!-- LINHA 5 - EVOLUÇÃO TEMPORAL FULL WIDTH -->
+            <div class="chart-box chart-box-full">
+                <h3 class="chart-title">Evolução Temporal de Pendências</h3>
+                <div class="chart-wrapper chart-wrapper-evolucao">
+                    <canvas id="chartEvolucaoTemporal"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabela de Dados -->
+        <div class="table-container">
+            <h3 class="section-title">
+                <i class="fas fa-table"></i> Todas as Demandas
+            </h3>
+
+            <!-- CAIXA DE PESQUISA -->
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="searchInput" placeholder="Pesquisar na tabela..." onkeyup="searchTable()">
+            </div>
+
+            <!-- SELETOR DE ITENS POR PÁGINA -->
+            <div class="pagination-controls">
+                <label for="itemsPerPage">Mostrar:</label>
+                <select id="itemsPerPage" onchange="changeItemsPerPage()">
+                    <option value="10">10</option>
+                    <option value="25">25</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                    <option value="-1">Todos</option>
+                </select>
+                <span>registros por página</span>
+            </div>
+
+            <!-- PAGINAÇÃO estilo do anexo -->
+            <div class="pager" id="pager">
+                <button class="pager-btn" id="btnPrev" onclick="goPrev()">Anterior</button>
+                <div class="pager-info" id="pagerInfo">Página 1 de 1</div>
+                <button class="pager-btn pager-btn-primary" id="btnNext" onclick="goNext()">Próximo</button>
+            </div>
+
+            <div class="table-wrapper">
+                <table class="data-table" id="dataTable">
+                    <thead>
+                        <tr>
+                            <th>Origem</th>
+                            <th>Data Solicitação</th>
+                            <th>Nº Prontuário</th>
+                            <th>Unidade Solicitante</th>
+                            <th>CBO Especialidade</th>
+                            <th>Data Início Pendência</th>
+                            <th>Status</th>
+                            <th>Data Final Prazo (15d)</th>
+                            <th>Data Envio Email (15d)</th>
+                            <th>Data Final Prazo (30d)</th>
+                            <th>Data Envio Email (30d)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <tr>
+                            <td colspan="11" class="loading-message">
+                                <i class="fas fa-spinner fa-spin"></i> Carregando dados...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="table-footer" id="tableFooter">
+                Mostrando de 1 até 0 de 0 registros
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Rodapé -->
+    <footer class="footer">
+        <p>DIRETORIA DE REGULAÇÃO</p>
+        <p>CENTRAL DE MARCAÇÃO DE CONSULTAS</p>
+        <p>DISTRITO SANITÁRIO VARGEM DAS FLORES</p>
+        <p>Telefone 3198-6758 Marcadora Carolina</p>
+        <p class="footer-credits">Página Criada por Ana P. A. Silva Matr:201704/Assistente Adm. Diretoria de Regulação - Ceaps</p>
+    </footer>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-content">
+            <i class="fas fa-spinner fa-spin"></i>
+            <p>Carregando dados das planilhas...</p>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
+
