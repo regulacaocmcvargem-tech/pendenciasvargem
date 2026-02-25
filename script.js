@@ -48,15 +48,90 @@ let chartPendenciasMes = null;
 let chartEvolucaoTemporal = null;
 
 // ===================================
-// FUNÇÃO AUXILIAR PARA BUSCAR VALOR DE COLUNA
+// FUNÇÃO AUXILIAR PARA BUSCAR VALOR DE COLUNA (VERSÃO SUPER MELHORADA)
 // ===================================
 function getColumnValue(item, possibleNames, defaultValue = '-') {
+  // Se o item for null ou undefined, retorna defaultValue
+  if (!item) return defaultValue;
+  
+  // Primeiro, tenta encontrar exatamente como está no objeto
   for (let name of possibleNames) {
-    if (Object.prototype.hasOwnProperty.call(item, name) && item[name]) {
-      return item[name];
+    if (item.hasOwnProperty(name) && item[name] !== undefined && item[name] !== null && item[name].toString().trim() !== '') {
+      return item[name].toString().trim();
     }
   }
+  
+  // Se não encontrar, tenta com case insensitive
+  const keys = Object.keys(item);
+  
+  for (let key of keys) {
+    const keyLower = key.toLowerCase().trim();
+    
+    for (let searchName of possibleNames) {
+      const searchLower = searchName.toLowerCase().trim();
+      
+      // Verifica correspondência exata ignorando maiúsculas/minúsculas
+      if (keyLower === searchLower) {
+        const value = item[key];
+        if (value !== undefined && value !== null && value.toString().trim() !== '') {
+          return value.toString().trim();
+        }
+      }
+      
+      // Verifica se uma string contém a outra (para casos como "Nº Solicitação" vs "Solicitação")
+      if (keyLower.includes(searchLower) || searchLower.includes(keyLower)) {
+        const value = item[key];
+        if (value !== undefined && value !== null && value.toString().trim() !== '') {
+          return value.toString().trim();
+        }
+      }
+    }
+  }
+  
+  // Tenta encontrar qualquer chave que contenha "solicita" (para o caso específico da solicitação)
+  const isSolicitacao = possibleNames.some(name => 
+    name.toLowerCase().includes('solicita') || name.toLowerCase().includes('solic') || name.toLowerCase().includes('nº')
+  );
+  
+  if (isSolicitacao) {
+    for (let key of keys) {
+      if (key.toLowerCase().includes('solicita') || key.toLowerCase().includes('solic') || key.toLowerCase().includes('nº')) {
+        const value = item[key];
+        if (value !== undefined && value !== null && value.toString().trim() !== '') {
+          return value.toString().trim();
+        }
+      }
+    }
+  }
+  
   return defaultValue;
+}
+
+// ===================================
+// FUNÇÃO DE DEBUG PARA VERIFICAR COLUNAS
+// ===================================
+function debugColumns() {
+  if (allData.length > 0) {
+    console.log('=== DEBUG: Primeiro item carregado ===');
+    console.log('Colunas disponíveis:', Object.keys(allData[0]));
+    console.log('Valores completos:', allData[0]);
+    
+    // Verifica especificamente a coluna de solicitação
+    const solicitacaoKeys = Object.keys(allData[0]).filter(key => 
+      key.toLowerCase().includes('solicita') || key.toLowerCase().includes('solic') || key.toLowerCase().includes('nº')
+    );
+    console.log('Possíveis colunas de solicitação:', solicitacaoKeys);
+    
+    if (solicitacaoKeys.length > 0) {
+      console.log('Valores encontrados para solicitação:');
+      solicitacaoKeys.forEach(key => {
+        console.log(`  ${key}: "${allData[0][key]}"`);
+      });
+    } else {
+      console.log('NENHUMA coluna relacionada a "solicitação" encontrada!');
+      console.log('Primeiras 10 colunas disponíveis:', Object.keys(allData[0]).slice(0, 10));
+    }
+  }
 }
 
 // ===================================
@@ -230,6 +305,9 @@ async function loadData() {
 
     populateFilters();
     updateDashboard();
+    
+    // Adiciona debug para verificar as colunas
+    debugColumns();
 
   } catch (error) {
     console.error('Erro ao carregar dados:', error);
@@ -536,7 +614,7 @@ function updateCharts() {
   createHorizontalBarChart('chartPendenciasNaoResolvidasUnidade', pendenciasNRLabels, pendenciasNRValues, '#dc2626');
 
   // -----------------------------------
-  // MUDANÇA 1: Registros de Pendências Resolvidas por Unidade
+  // Registros de Pendências Resolvidas por Unidade
   // (aba Resolvidos + usuário preenchido)
   // -----------------------------------
   const unidadesResolvidasCount = {};
@@ -556,7 +634,7 @@ function updateCharts() {
   createHorizontalBarChart('chartUnidades', unidadesResolvidasLabels, unidadesResolvidasValues, '#48bb78');
 
   // -----------------------------------
-  // MUDANÇA 2: Registros de Pendências Resolvidas por Especialidade
+  // Registros de Pendências Resolvidas por Especialidade
   // (aba Resolvidos + usuário preenchido)
   // -----------------------------------
   const especialidadesResolvidasCount = {};
@@ -610,7 +688,7 @@ function updateCharts() {
   createVerticalBarChart('chartStatus', statusLabels, statusValues, '#f97316');
   
   // -----------------------------------
-  // Pizza (agora ao lado do Mês)
+  // Pizza
   // -----------------------------------
   createPieChart('chartPizzaStatus', statusLabels, statusValues);
   
@@ -1129,6 +1207,7 @@ function createPieChart(canvasId, labels, data) {
 
 // ===================================
 // ATUALIZAR TABELA + PAGINAÇÃO (Anterior / Página X de Y / Próximo)
+// ADICIONADA A COLUNA "Nº Solicitação"
 // ===================================
 function getTotalPages() {
   if (currentItemsPerPage === -1) return 1;
@@ -1178,7 +1257,7 @@ function updateTable() {
   tbody.innerHTML = '';
 
   if (filteredData.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="11" class="loading-message"><i class="fas fa-inbox"></i> Nenhum registro encontrado</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="12" class="loading-message"><i class="fas fa-inbox"></i> Nenhum registro encontrado</td></tr>';
     footer.textContent = 'Mostrando 0 registros';
     currentPage = 1;
     updatePagerUI();
@@ -1204,6 +1283,45 @@ function updateTable() {
     const row = document.createElement('tr');
 
     const origem = item['_origem'] || '-';
+
+    // Busca o número da solicitação com a função melhorada
+    const numeroSolicitacao = (() => {
+      // Tenta encontrar o valor da solicitação com a função melhorada
+      const valor = getColumnValue(item, [
+        'Solicitação',
+        'SOLICITAÇÃO',
+        'Solicitacao',
+        'solicitacao',
+        'Nº Solicitação',
+        'Nº da Solicitação',
+        'Numero Solicitação',
+        'Número da Solicitação',
+        'N_Solicitacao',
+        'Solicitação Nº',
+        'Nº Solic',
+        'Solic',
+        'Nº Solicitacao',
+        'Numero Solicitacao'
+      ], '-');
+      
+      // Se encontrou um valor diferente de '-', retorna ele
+      if (valor !== '-') {
+        return valor;
+      }
+      
+      // Se não encontrou, tenta buscar qualquer coluna que contenha "solicita"
+      const keys = Object.keys(item);
+      for (let key of keys) {
+        if (key.toLowerCase().includes('solicita') || key.toLowerCase().includes('solic') || key.toLowerCase().includes('nº')) {
+          const val = item[key];
+          if (val && val.toString().trim() !== '') {
+            return val.toString().trim();
+          }
+        }
+      }
+      
+      return '-';
+    })();
 
     const dataSolicitacao = getColumnValue(item, [
       'Data da Solicitação',
@@ -1257,6 +1375,7 @@ function updateTable() {
 
     row.innerHTML = `
       <td>${origem}</td>
+      <td>${numeroSolicitacao}</td>
       <td>${formatDate(dataSolicitacao)}</td>
       <td>${prontuario}</td>
       <td>${item['Unidade Solicitante'] || '-'}</td>
@@ -1332,7 +1451,7 @@ function refreshData() {
 }
 
 // ===================================
-// DOWNLOAD EXCEL
+// DOWNLOAD EXCEL (ATUALIZADO COM Nº SOLICITAÇÃO)
 // ===================================
 function downloadExcel() {
   if (filteredData.length === 0) {
@@ -1342,6 +1461,20 @@ function downloadExcel() {
 
   const exportData = filteredData.map(item => ({
     'Origem': item['_origem'] || '',
+    'Nº Solicitação': getColumnValue(item, [
+      'Solicitação',
+      'SOLICITAÇÃO',
+      'Solicitacao',
+      'solicitacao',
+      'Nº Solicitação',
+      'Nº da Solicitação',
+      'Numero Solicitação',
+      'Número da Solicitação',
+      'N_Solicitacao',
+      'Solicitação Nº',
+      'Nº Solic',
+      'Solic'
+    ], ''),
     'Data Solicitação': getColumnValue(item, ['Data da Solicitação', 'Data Solicitação', 'Data da Solicitacao', 'Data Solicitacao'], ''),
     'Nº Prontuário': getColumnValue(item, ['Nº Prontuário', 'N° Prontuário', 'Numero Prontuário', 'Prontuário', 'Prontuario'], ''),
     'Unidade Solicitante': item['Unidade Solicitante'] || '',
@@ -1361,6 +1494,7 @@ function downloadExcel() {
 
   ws['!cols'] = [
     { wch: 20 }, // Origem
+    { wch: 15 }, // Nº Solicitação
     { wch: 18 }, // Data Solicitação
     { wch: 15 }, // Nº Prontuário
     { wch: 30 }, // Unidade
@@ -1377,3 +1511,4 @@ function downloadExcel() {
   const hoje = new Date().toISOString().split('T')[0];
   XLSX.writeFile(wb, `Dados_Eldorado_${hoje}.xlsx`);
 }
+
