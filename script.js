@@ -1,27 +1,26 @@
 // ===================================
-// FUNÇÃO: URL CSV (Google Sheets gviz) + ANTI-CACHE
+// FUNÇÃO: URL CSV (Google Sheets gviz) - SEM CACHE BUSTING
 // ===================================
 function gvizCsvUrl(sheetId, gid) {
-  const cacheBust = Date.now();
-  return `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&gid=${gid}&_=${cacheBust}`;
+  return `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&gid=${gid}`;
 }
 
 // ===================================
 // CONFIGURAÇÃO DA PLANILHA (DUAS ABAS)
+// NOVOS LINKS DO DISTRITO VARGEM DAS FLORES
 // ===================================
-// ✅ PLANILHA "VARGEM DAS FLORES"
-const SHEET_ID = '1IHknmxe3xAnfy5Bju_23B5ivIL-qMaaE6q_HuPaLBpk';
+const SHEET_ID = '1S-i9JgEXm1iRGxatGX8Sw05gaN9qiGGzuW6POSvSsf4';
 
 const SHEETS = [
   {
     name: 'PENDÊNCIAS VARGEM DAS FLORES',
-    url: gvizCsvUrl(SHEET_ID, '278071504'),
+    url: gvizCsvUrl(SHEET_ID, '195857617'),
     distrito: 'VARGEM DAS FLORES',
     tipo: 'PENDENTE'
   },
   {
     name: 'RESOLVIDOS VARGEM DAS FLORES',
-    url: gvizCsvUrl(SHEET_ID, '451254610'),
+    url: gvizCsvUrl(SHEET_ID, '175440536'),
     distrito: 'VARGEM DAS FLORES',
     tipo: 'RESOLVIDO'
   }
@@ -135,11 +134,12 @@ function debugColumns() {
 }
 
 // ===================================
-// REGRA DE PENDÊNCIA: COLUNA "USUÁRIO" PREENCHIDA
+// REGRA DE PENDÊNCIA: COLUNA "SOLICITAÇÃO" PREENCHIDA
+// (SUBSTITUI A VERIFICAÇÃO DE USUÁRIO)
 // ===================================
 function isPendenciaByUsuario(item) {
-  const usuario = getColumnValue(item, ['Usuário', 'Usuario', 'USUÁRIO', 'USUARIO'], '');
-  return !!(usuario && String(usuario).trim() !== '');
+  const solicitacao = getColumnValue(item, ['Solicitação', 'SOLICITAÇÃO', 'Solicitacao', 'solicitacao'], '');
+  return !!(solicitacao && String(solicitacao).trim() !== '');
 }
 
 // ===================================
@@ -554,24 +554,24 @@ function updateCards() {
   const totalGeral = allData.length;
   const filtrado = filteredData.length;
 
-  // Total pendências a responder (aba pendências + usuário preenchido)
+  // Total pendências a responder (aba pendências + solicitação preenchida)
   const basePendenciasResponder = allData.filter(item => isOrigemPendencias(item) && isPendenciaByUsuario(item));
 
-  // NOVO 1: Registros de Pendências Resolvidas (aba Resolvidos + usuário preenchido)
+  // NOVO 1: Registros de Pendências Resolvidas (aba Resolvidos + solicitação preenchida)
   const pendenciasResolvidas = allData.filter(item => isOrigemResolvidos(item) && isPendenciaByUsuario(item));
 
-  // NOVO 2: Registros de Pendências Agendadas (aba Resolvidos + usuário + Status = "Agendado")
+  // NOVO 2: Registros de Pendências Agendadas (aba Resolvidos + solicitação + Status = "Agendado")
   const pendenciasAgendadas = allData.filter(item => {
     return isOrigemResolvidos(item) && isPendenciaByUsuario(item) && item['Status'] === 'Agendado';
   });
 
   // NOVO 3: Registros de Pendências Canceladas Por Vencimento do Prazo
-  // (aba Resolvidos + usuário + Status = "Cancelado/Vencimento do Prazo")
+  // (aba Resolvidos + solicitação + Status = "Cancelado/Vencimento do Prazo")
   const pendenciasCanceladasVencimento = allData.filter(item => {
     return isOrigemResolvidos(item) && isPendenciaByUsuario(item) && item['Status'] === 'Cancelado/Vencimento do Prazo';
   });
 
-  // NOVO 4: Registros de Pendências Canceladas/Geral (aba Resolvidos + usuário + Status = "Cancelado")
+  // NOVO 4: Registros de Pendências Canceladas/Geral (aba Resolvidos + solicitação + Status = "Cancelado")
   const pendenciasCanceladasGeral = allData.filter(item => {
     return isOrigemResolvidos(item) && isPendenciaByUsuario(item) && item['Status'] === 'Cancelado';
   });
@@ -595,7 +595,7 @@ function updateCards() {
 // ===================================
 function updateCharts() {
   // -----------------------------------
-  // Pendências Não Resolvidas por Unidade (aba Pendências + usuário)
+  // Pendências Não Resolvidas por Unidade (aba Pendências + solicitação)
   // -----------------------------------
   const pendenciasNaoResolvidasUnidade = {};
   filteredData.forEach(item => {
@@ -614,8 +614,8 @@ function updateCharts() {
   createHorizontalBarChart('chartPendenciasNaoResolvidasUnidade', pendenciasNRLabels, pendenciasNRValues, '#dc2626');
 
   // -----------------------------------
-  // Registros de Pendências Resolvidas por Unidade
-  // (aba Resolvidos + usuário preenchido)
+  // MUDANÇA 1: Registros de Pendências Resolvidas por Unidade
+  // (aba Resolvidos + solicitação preenchida)
   // -----------------------------------
   const unidadesResolvidasCount = {};
   filteredData.forEach(item => {
@@ -634,8 +634,8 @@ function updateCharts() {
   createHorizontalBarChart('chartUnidades', unidadesResolvidasLabels, unidadesResolvidasValues, '#48bb78');
 
   // -----------------------------------
-  // Registros de Pendências Resolvidas por Especialidade
-  // (aba Resolvidos + usuário preenchido)
+  // MUDANÇA 2: Registros de Pendências Resolvidas por Especialidade
+  // (aba Resolvidos + solicitação preenchida)
   // -----------------------------------
   const especialidadesResolvidasCount = {};
   filteredData.forEach(item => {
@@ -655,7 +655,7 @@ function updateCharts() {
 
   // -----------------------------------
   // Pendências Não Resolvidas por Especialidade
-  // (aba Pendências + usuário preenchido) + cor vermelho escuro
+  // (aba Pendências + solicitação preenchida) + cor vermelho escuro
   // -----------------------------------
   const especialidadesNaoResolvidasCount = {};
   filteredData.forEach(item => {
@@ -688,7 +688,7 @@ function updateCharts() {
   createVerticalBarChart('chartStatus', statusLabels, statusValues, '#f97316');
   
   // -----------------------------------
-  // Pizza
+  // Pizza (agora ao lado do Mês)
   // -----------------------------------
   createPieChart('chartPizzaStatus', statusLabels, statusValues);
   
@@ -1389,7 +1389,7 @@ function updateTable() {
     `;
 
     // DESTAQUE AMARELO:
-    // somente Aba Pendências + Usuário preenchido + 26 dias desde "Data Início da Pendência"
+    // somente Aba Pendências + Solicitação preenchida + 26 dias desde "Data Início da Pendência"
     const dataInicio = parseDate(dataInicioStr);
     if (dataInicio && isOrigemPendencias(item) && isPendenciaByUsuario(item)) {
       const diasDecorridos = Math.floor((hoje - dataInicio) / (1000 * 60 * 60 * 24));
@@ -1494,7 +1494,7 @@ function downloadExcel() {
 
   ws['!cols'] = [
     { wch: 20 }, // Origem
-    { wch: 15 }, // Nº Solicitação
+    { wch: 15 }, // Nº Solicitação (NOVA COLUNA)
     { wch: 18 }, // Data Solicitação
     { wch: 15 }, // Nº Prontuário
     { wch: 30 }, // Unidade
@@ -1509,6 +1509,5 @@ function downloadExcel() {
   ];
 
   const hoje = new Date().toISOString().split('T')[0];
-  XLSX.writeFile(wb, `Dados_Eldorado_${hoje}.xlsx`);
+  XLSX.writeFile(wb, `Dados_VargemDasFlores_${hoje}.xlsx`);
 }
-
