@@ -266,7 +266,7 @@ body {
 }
 
 /* ===================================
-   GRÁFICOS - MUDANÇA 3: REORGANIZAÇÃO DO LAYOUT
+   GRÁFICOS - REORGANIZAÇÃO DO LAYOUT
 =================================== */
 .charts-container {
     display: grid;
@@ -302,48 +302,63 @@ body {
     margin: 0.25rem 0 0.8rem;
 }
 
+/* ===================================
+   CHART WRAPPERS - AUMENTADOS PARA OCUPAR MAIS ESPAÇO
+=================================== */
 .chart-wrapper {
     position: relative;
     height: 520px;
     min-height: 450px;
 }
 
+.chart-wrapper-large {
+    height: 580px;
+    min-height: 500px;
+}
+
 .chart-wrapper-pizza {
     position: relative;
+    height: 580px;
+    min-height: 500px;
+}
+
+.chart-wrapper-status {
     height: 520px;
     min-height: 450px;
 }
 
-.chart-wrapper-status {
-    height: 460px;
-    min-height: 380px;
-}
-
-/* NOVO: Wrapper especial para Evolução Temporal (maior altura) */
 .chart-wrapper-evolucao {
     position: relative;
-    height: 420px;
-    min-height: 380px;
+    height: 480px;
+    min-height: 400px;
 }
 
+/* ===================================
+   RESPONSIVIDADE DOS GRÁFICOS
+=================================== */
 @media (max-width: 1200px) {
     .charts-container {
         grid-template-columns: 1fr;
     }
+    
+    .chart-wrapper,
+    .chart-wrapper-large,
+    .chart-wrapper-pizza,
+    .chart-wrapper-status,
+    .chart-wrapper-evolucao {
+        height: 450px;
+        min-height: 380px;
+    }
 }
 
 @media (max-width: 768px) {
-    .chart-wrapper {
-        height: 400px;
-    }
-    .chart-wrapper-pizza {
-        height: 360px;
-    }
-    .chart-wrapper-status {
-        height: 380px;
-    }
+    .chart-wrapper,
+    .chart-wrapper-large,
+    .chart-wrapper-pizza,
+    .chart-wrapper-status,
     .chart-wrapper-evolucao {
-        height: 360px;
+        height: 380px;
+        min-height: 320px;
     }
 }
 
