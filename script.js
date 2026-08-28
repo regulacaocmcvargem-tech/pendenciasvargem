@@ -1,8 +1,9 @@
 // ===================================
-// FUNÇÃO: URL CSV (Google Sheets gviz) - SEM CACHE BUSTING
+// FUNÇÃO: URL CSV (Google Sheets gviz) + ANTI-CACHE
 // ===================================
 function gvizCsvUrl(sheetId, gid) {
-  return `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&gid=${gid}`;
+  const cacheBust = Date.now();
+  return `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&gid=${gid}&_=${cacheBust}`;
 }
 
 // ===================================
@@ -50,17 +51,14 @@ let chartEvolucaoTemporal = null;
 // FUNÇÃO AUXILIAR PARA BUSCAR VALOR DE COLUNA (VERSÃO SUPER MELHORADA)
 // ===================================
 function getColumnValue(item, possibleNames, defaultValue = '-') {
-  // Se o item for null ou undefined, retorna defaultValue
   if (!item) return defaultValue;
   
-  // Primeiro, tenta encontrar exatamente como está no objeto
   for (let name of possibleNames) {
     if (item.hasOwnProperty(name) && item[name] !== undefined && item[name] !== null && item[name].toString().trim() !== '') {
       return item[name].toString().trim();
     }
   }
   
-  // Se não encontrar, tenta com case insensitive
   const keys = Object.keys(item);
   
   for (let key of keys) {
@@ -69,7 +67,6 @@ function getColumnValue(item, possibleNames, defaultValue = '-') {
     for (let searchName of possibleNames) {
       const searchLower = searchName.toLowerCase().trim();
       
-      // Verifica correspondência exata ignorando maiúsculas/minúsculas
       if (keyLower === searchLower) {
         const value = item[key];
         if (value !== undefined && value !== null && value.toString().trim() !== '') {
@@ -77,7 +74,6 @@ function getColumnValue(item, possibleNames, defaultValue = '-') {
         }
       }
       
-      // Verifica se uma string contém a outra (para casos como "Nº Solicitação" vs "Solicitação")
       if (keyLower.includes(searchLower) || searchLower.includes(keyLower)) {
         const value = item[key];
         if (value !== undefined && value !== null && value.toString().trim() !== '') {
@@ -87,7 +83,6 @@ function getColumnValue(item, possibleNames, defaultValue = '-') {
     }
   }
   
-  // Tenta encontrar qualquer chave que contenha "solicita" (para o caso específico da solicitação)
   const isSolicitacao = possibleNames.some(name => 
     name.toLowerCase().includes('solicita') || name.toLowerCase().includes('solic') || name.toLowerCase().includes('nº')
   );
@@ -115,7 +110,6 @@ function debugColumns() {
     console.log('Colunas disponíveis:', Object.keys(allData[0]));
     console.log('Valores completos:', allData[0]);
     
-    // Verifica especificamente a coluna de solicitação
     const solicitacaoKeys = Object.keys(allData[0]).filter(key => 
       key.toLowerCase().includes('solicita') || key.toLowerCase().includes('solic') || key.toLowerCase().includes('nº')
     );
@@ -135,7 +129,6 @@ function debugColumns() {
 
 // ===================================
 // REGRA DE PENDÊNCIA: COLUNA "SOLICITAÇÃO" PREENCHIDA
-// (SUBSTITUI A VERIFICAÇÃO DE USUÁRIO)
 // ===================================
 function isPendenciaByUsuario(item) {
   const solicitacao = getColumnValue(item, ['Solicitação', 'SOLICITAÇÃO', 'Solicitacao', 'solicitacao'], '');
@@ -306,7 +299,6 @@ async function loadData() {
     populateFilters();
     updateDashboard();
     
-    // Adiciona debug para verificar as colunas
     debugColumns();
 
   } catch (error) {
@@ -378,7 +370,7 @@ function showLoading(show) {
 }
 
 // ===================================
-//  POPULAR FILTROS
+// POPULAR FILTROS
 // ===================================
 function populateFilters() {
   const statusList = [...new Set(allData.map(item => item['Status']))].filter(Boolean).sort();
@@ -402,7 +394,7 @@ function populateFilters() {
 }
 
 // ===================================
-//  POPULAR FILTRO DE MÊS
+// POPULAR FILTRO DE MÊS
 // ===================================
 function populateMonthFilter() {
   const mesesSet = new Set();
@@ -433,7 +425,7 @@ function populateMonthFilter() {
 }
 
 // ===================================
-//  APLICAR FILTROS
+// APLICAR FILTROS
 // ===================================
 function applyFilters() {
   const statusSel = getSelectedFromPanel('msStatusPanel');
@@ -482,7 +474,7 @@ function applyFilters() {
 }
 
 // ===================================
-//  LIMPAR FILTROS
+// LIMPAR FILTROS
 // ===================================
 function clearFilters() {
   ['msStatusPanel', 'msUnidadePanel', 'msEspecialidadePanel', 'msPrestadorPanel', 'msMesPanel'].forEach(panelId => {
@@ -548,35 +540,28 @@ function updateDashboard() {
 }
 
 // ===================================
-// CARDS (NOVOS)
+// CARDS
 // ===================================
 function updateCards() {
   const totalGeral = allData.length;
   const filtrado = filteredData.length;
 
-  // Total pendências a responder (aba pendências + solicitação preenchida)
   const basePendenciasResponder = allData.filter(item => isOrigemPendencias(item) && isPendenciaByUsuario(item));
 
-  // NOVO 1: Registros de Pendências Resolvidas (aba Resolvidos + solicitação preenchida)
   const pendenciasResolvidas = allData.filter(item => isOrigemResolvidos(item) && isPendenciaByUsuario(item));
 
-  // NOVO 2: Registros de Pendências Agendadas (aba Resolvidos + solicitação + Status = "Agendado")
   const pendenciasAgendadas = allData.filter(item => {
     return isOrigemResolvidos(item) && isPendenciaByUsuario(item) && item['Status'] === 'Agendado';
   });
 
-  // NOVO 3: Registros de Pendências Canceladas Por Vencimento do Prazo
-  // (aba Resolvidos + solicitação + Status = "Cancelado/Vencimento do Prazo")
   const pendenciasCanceladasVencimento = allData.filter(item => {
     return isOrigemResolvidos(item) && isPendenciaByUsuario(item) && item['Status'] === 'Cancelado/Vencimento do Prazo';
   });
 
-  // NOVO 4: Registros de Pendências Canceladas/Geral (aba Resolvidos + solicitação + Status = "Cancelado")
   const pendenciasCanceladasGeral = allData.filter(item => {
     return isOrigemResolvidos(item) && isPendenciaByUsuario(item) && item['Status'] === 'Cancelado';
   });
 
-  // Atualizar cards
   const elTotalGeral = document.getElementById('totalRegistrosGeral');
   if (elTotalGeral) elTotalGeral.textContent = totalGeral;
 
@@ -591,11 +576,11 @@ function updateCards() {
 }
 
 // ===================================
-//  GRÁFICOS
+// GRÁFICOS
 // ===================================
 function updateCharts() {
   // -----------------------------------
-  // Pendências Não Resolvidas por Unidade (aba Pendências + solicitação)
+  // Pendências Não Resolvidas por Unidade
   // -----------------------------------
   const pendenciasNaoResolvidasUnidade = {};
   filteredData.forEach(item => {
@@ -614,8 +599,7 @@ function updateCharts() {
   createHorizontalBarChart('chartPendenciasNaoResolvidasUnidade', pendenciasNRLabels, pendenciasNRValues, '#dc2626');
 
   // -----------------------------------
-  // MUDANÇA 1: Registros de Pendências Resolvidas por Unidade
-  // (aba Resolvidos + solicitação preenchida)
+  // Registros de Pendências Resolvidas por Unidade
   // -----------------------------------
   const unidadesResolvidasCount = {};
   filteredData.forEach(item => {
@@ -634,8 +618,7 @@ function updateCharts() {
   createHorizontalBarChart('chartUnidades', unidadesResolvidasLabels, unidadesResolvidasValues, '#48bb78');
 
   // -----------------------------------
-  // MUDANÇA 2: Registros de Pendências Resolvidas por Especialidade
-  // (aba Resolvidos + solicitação preenchida)
+  // Registros de Pendências Resolvidas por Especialidade
   // -----------------------------------
   const especialidadesResolvidasCount = {};
   filteredData.forEach(item => {
@@ -655,7 +638,6 @@ function updateCharts() {
 
   // -----------------------------------
   // Pendências Não Resolvidas por Especialidade
-  // (aba Pendências + solicitação preenchida) + cor vermelho escuro
   // -----------------------------------
   const especialidadesNaoResolvidasCount = {};
   filteredData.forEach(item => {
@@ -688,12 +670,12 @@ function updateCharts() {
   createVerticalBarChart('chartStatus', statusLabels, statusValues, '#f97316');
   
   // -----------------------------------
-  // Pizza (agora ao lado do Mês)
+  // GRÁFICO DE ROSCA (DOUGHNUT) - Substitui o Pizza
   // -----------------------------------
-  createPieChart('chartPizzaStatus', statusLabels, statusValues);
+  createDoughnutChart('chartPizzaStatus', statusLabels, statusValues);
   
   // -----------------------------------
-  // Evolução Temporal (agora embaixo, full width)
+  // Evolução Temporal (com valores em cima das bolinhas)
   // -----------------------------------
   createEvolucaoTemporalChart('chartEvolucaoTemporal');
 
@@ -748,7 +730,7 @@ function updateCharts() {
 }
 
 // ===================================
-// GRÁFICO DE BARRAS HORIZONTAIS
+// GRÁFICO DE BARRAS HORIZONTAIS (SEM GRID)
 // ===================================
 function createHorizontalBarChart(canvasId, labels, data, color) {
   const ctx = document.getElementById(canvasId);
@@ -789,10 +771,13 @@ function createHorizontalBarChart(canvasId, labels, data, color) {
         }
       },
       scales: {
-        x: { display: false, grid: { display: false } },
+        x: { 
+          display: false, 
+          grid: { display: false } // ✅ REMOVE GRADE
+        },
         y: {
           ticks: { font: { size: 12, weight: '500' }, color: '#4a5568', padding: 8 },
-          grid: { display: false }
+          grid: { display: false } // ✅ REMOVE GRADE
         }
       },
       layout: { padding: { right: 50 } }
@@ -827,7 +812,7 @@ function createHorizontalBarChart(canvasId, labels, data, color) {
 }
 
 // ===================================
-// GRÁFICO VERTICAL COM VALOR NO MEIO
+// GRÁFICO VERTICAL COM VALOR NO MEIO (SEM GRID)
 // ===================================
 function createVerticalBarChartCenteredValue(canvasId, labels, data, color) {
   const ctx = document.getElementById(canvasId);
@@ -862,18 +847,17 @@ function createVerticalBarChartCenteredValue(canvasId, labels, data, color) {
           titleFont: { size: 14, weight: 'bold' },
           bodyFont: { size: 13 },
           padding: 12,
-          cornerRadius: 8
-        }
+          cornerRadius: 8        }
       },
       scales: {
         x: {
           ticks: { font: { size: 12, weight: '600' }, color: '#4a5568', maxRotation: 45, minRotation: 0 },
-          grid: { display: false }
+          grid: { display: false } // ✅ REMOVE GRADE
         },
         y: {
           beginAtZero: true,
           ticks: { font: { size: 12, weight: '600' }, color: '#4a5568' },
-          grid: { color: 'rgba(0,0,0,0.06)' }
+          grid: { display: false } // ✅ REMOVE GRADE
         }
       }
     },
@@ -907,7 +891,7 @@ function createVerticalBarChartCenteredValue(canvasId, labels, data, color) {
 }
 
 // ===================================
-// GRÁFICO VERTICAL (STATUS)
+// GRÁFICO VERTICAL (STATUS) - SEM GRID
 // ===================================
 function createVerticalBarChart(canvasId, labels, data, color) {
   const ctx = document.getElementById(canvasId);
@@ -947,12 +931,12 @@ function createVerticalBarChart(canvasId, labels, data, color) {
       scales: {
         x: {
           ticks: { font: { size: 12, weight: '600' }, color: '#4a5568', maxRotation: 45, minRotation: 0 },
-          grid: { display: false }
+          grid: { display: false } // ✅ REMOVE GRADE
         },
         y: {
           beginAtZero: true,
           ticks: { font: { size: 12, weight: '600' }, color: '#4a5568' },
-          grid: { color: 'rgba(0,0,0,0.06)' }
+          grid: { display: false } // ✅ REMOVE GRADE
         }
       }
     },
@@ -984,123 +968,9 @@ function createVerticalBarChart(canvasId, labels, data, color) {
 }
 
 // ===================================
-// GRÁFICO DE EVOLUÇÃO TEMPORAL (LINHA + ÁREA)
+// GRÁFICO DE ROSCA (DOUGHNUT) - COM VALORES NAS FATIAS
 // ===================================
-function createEvolucaoTemporalChart(canvasId) {
-  const ctx = document.getElementById(canvasId);
-  if (!ctx) return;
-
-  if (chartEvolucaoTemporal) chartEvolucaoTemporal.destroy();
-
-  const mesCountMap = {};
-
-  filteredData.forEach(item => {
-    if (!isPendenciaByUsuario(item)) return;
-
-    const dataInicio = parseDate(getColumnValue(item, [
-      'Data Início da Pendência',
-      'Data Inicio da Pendencia',
-      'Data Início Pendência',
-      'Data Inicio Pendencia'
-    ]));
-
-    if (dataInicio) {
-      const mesAno = `${dataInicio.getFullYear()}-${String(dataInicio.getMonth() + 1).padStart(2, '0')}`;
-      mesCountMap[mesAno] = (mesCountMap[mesAno] || 0) + 1;
-    }
-  });
-
-  const mesesOrdenados = Object.keys(mesCountMap).sort();
-
-  const labels = mesesOrdenados.map(mesAno => {
-    const [ano, mes] = mesAno.split('-');
-    const nomeMes = new Date(ano, mes - 1).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' });
-    return nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1);
-  });
-
-  const values = mesesOrdenados.map(mesAno => mesCountMap[mesAno]);
-
-  const hasData = values.length > 0 && values.reduce((s, v) => s + v, 0) > 0;
-
-  chartEvolucaoTemporal = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: hasData ? labels : ['Sem dados'],
-      datasets: [{
-        label: 'Pendências Registradas',
-        data: hasData ? values : [0],
-        borderColor: '#f97316',
-        backgroundColor: 'rgba(249, 115, 22, 0.15)',
-        borderWidth: 3,
-        fill: true,
-        tension: 0.4,
-        pointBackgroundColor: '#f97316',
-        pointBorderColor: '#ffffff',
-        pointBorderWidth: 2,
-        pointRadius: 5,
-        pointHoverRadius: 7
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          display: true,
-          position: 'top',
-          labels: {
-            font: { size: 13, weight: 'bold' },
-            color: '#1f2937',
-            padding: 15,
-            usePointStyle: true
-          }
-        },
-        tooltip: {
-          enabled: hasData,
-          backgroundColor: 'rgba(0,0,0,0.85)',
-          titleFont: { size: 14, weight: 'bold' },
-          bodyFont: { size: 13 },
-          padding: 12,
-          cornerRadius: 8,
-          callbacks: {
-            label: function(context) {
-              return `Pendências: ${context.parsed.y}`;
-            }
-          }
-        }
-      },
-      scales: {
-        x: {
-          ticks: {
-            font: { size: 11, weight: '600' },
-            color: '#4a5568',
-            maxRotation: 45,
-            minRotation: 25
-          },
-          grid: { display: false }
-        },
-        y: {
-          beginAtZero: true,
-          ticks: {
-            font: { size: 12, weight: '600' },
-            color: '#4a5568',
-            precision: 0
-          },
-          grid: { color: 'rgba(0,0,0,0.06)' }
-        }
-      },
-      interaction: {
-        mode: 'index',
-        intersect: false
-      }
-    }
-  });
-}
-
-// ===================================
-// GRÁFICO DE PIZZA
-// ===================================
-function createPieChart(canvasId, labels, data) {
+function createDoughnutChart(canvasId, labels, data) {
   const ctx = document.getElementById(canvasId);
   if (!ctx) return;
 
@@ -1114,7 +984,7 @@ function createPieChart(canvasId, labels, data) {
   const total = data.reduce((sum, val) => sum + val, 0);
 
   chartPizzaStatus = new Chart(ctx, {
-    type: 'pie',
+    type: 'doughnut',
     data: {
       labels: labels,
       datasets: [{
@@ -1174,10 +1044,11 @@ function createPieChart(canvasId, labels, data) {
             }
           }
         }
-      }
+      },
+      cutout: '55%' // ✅ FAZ O EFEITO DE ROSCA (DOUGHNUT)
     },
     plugins: [{
-      id: 'customPieLabelsInside',
+      id: 'customDoughnutLabelsInside',
       afterDatasetsDraw: function (chart) {
         const ctx = chart.ctx;
         const dataset = chart.data.datasets[0];
@@ -1206,8 +1077,152 @@ function createPieChart(canvasId, labels, data) {
 }
 
 // ===================================
-// ATUALIZAR TABELA + PAGINAÇÃO (Anterior / Página X de Y / Próximo)
-// ADICIONADA A COLUNA "Nº Solicitação"
+// GRÁFICO DE EVOLUÇÃO TEMPORAL (COM VALORES EM CIMA DAS BOLINHAS E SEM GRID)
+// ===================================
+function createEvolucaoTemporalChart(canvasId) {
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) return;
+
+  if (chartEvolucaoTemporal) chartEvolucaoTemporal.destroy();
+
+  const mesCountMap = {};
+
+  filteredData.forEach(item => {
+    if (!isPendenciaByUsuario(item)) return;
+
+    const dataInicio = parseDate(getColumnValue(item, [
+      'Data Início da Pendência',
+      'Data Inicio da Pendencia',
+      'Data Início Pendência',
+      'Data Inicio Pendencia'
+    ]));
+
+    if (dataInicio) {
+      const mesAno = `${dataInicio.getFullYear()}-${String(dataInicio.getMonth() + 1).padStart(2, '0')}`;
+      mesCountMap[mesAno] = (mesCountMap[mesAno] || 0) + 1;
+    }
+  });
+
+  const mesesOrdenados = Object.keys(mesCountMap).sort();
+
+  const labels = mesesOrdenados.map(mesAno => {
+    const [ano, mes] = mesAno.split('-');
+    const nomeMes = new Date(ano, mes - 1).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' });
+    return nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1);
+  });
+
+  const values = mesesOrdenados.map(mesAno => mesCountMap[mesAno]);
+
+  const hasData = values.length > 0 && values.reduce((s, v) => s + v, 0) > 0;
+
+  chartEvolucaoTemporal = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: hasData ? labels : ['Sem dados'],
+      datasets: [{
+        label: 'Pendências Registradas',
+        data: hasData ? values : [0],
+        borderColor: '#f97316',
+        backgroundColor: 'rgba(249, 115, 22, 0.15)',
+        borderWidth: 3,
+        fill: true,
+        tension: 0.4,
+        pointBackgroundColor: '#f97316',
+        pointBorderColor: '#ffffff',
+        pointBorderWidth: 2,
+        pointRadius: 6,
+        pointHoverRadius: 8
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: true,
+          position: 'top',
+          labels: {
+            font: { size: 13, weight: 'bold' },
+            color: '#1f2937',
+            padding: 15,
+            usePointStyle: true
+          }
+        },
+        tooltip: {
+          enabled: hasData,
+          backgroundColor: 'rgba(0,0,0,0.85)',
+          titleFont: { size: 14, weight: 'bold' },
+          bodyFont: { size: 13 },
+          padding: 12,
+          cornerRadius: 8,
+          callbacks: {
+            label: function(context) {
+              return `Pendências: ${context.parsed.y}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: {
+            font: { size: 11, weight: '600' },
+            color: '#4a5568',
+            maxRotation: 45,
+            minRotation: 25
+          },
+          grid: { display: false } // ✅ REMOVE GRADE
+        },
+        y: {
+          beginAtZero: true,
+          ticks: {
+            font: { size: 12, weight: '600' },
+            color: '#4a5568',
+            precision: 0
+          },
+          grid: { display: false } // ✅ REMOVE GRADE
+        }
+      },
+      interaction: {
+        mode: 'index',
+        intersect: false
+      }
+    },
+    plugins: [{
+      id: 'evolucaoTemporalLabels',
+      afterDraw(chart) {
+        const { ctx } = chart;
+        const meta = chart.getDatasetMeta(0);
+        const dataset = chart.data.datasets[0];
+        if (!meta || !meta.data) return;
+
+        ctx.save();
+        ctx.font = 'bold 14px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+
+        meta.data.forEach((point, i) => {
+          const value = dataset.data[i];
+          if (value <= 0) return;
+
+          const x = point.x;
+          const y = point.y - 12; // ACIMA DA BOLINHA
+
+          // Fundo branco para melhor legibilidade
+          ctx.shadowColor = 'rgba(255, 255, 255, 0.9)';
+          ctx.shadowBlur = 8;
+          ctx.fillStyle = '#1e3a8a';
+          ctx.shadowColor = 'transparent';
+          ctx.fillText(`${value}`, x, y);
+        });
+
+        ctx.restore();
+      }
+    }]
+  });
+}
+
+// ===================================
+// ATUALIZAR TABELA + PAGINAÇÃO
 // ===================================
 function getTotalPages() {
   if (currentItemsPerPage === -1) return 1;
@@ -1284,9 +1299,7 @@ function updateTable() {
 
     const origem = item['_origem'] || '-';
 
-    // Busca o número da solicitação com a função melhorada
     const numeroSolicitacao = (() => {
-      // Tenta encontrar o valor da solicitação com a função melhorada
       const valor = getColumnValue(item, [
         'Solicitação',
         'SOLICITAÇÃO',
@@ -1304,12 +1317,10 @@ function updateTable() {
         'Numero Solicitacao'
       ], '-');
       
-      // Se encontrou um valor diferente de '-', retorna ele
       if (valor !== '-') {
         return valor;
       }
       
-      // Se não encontrou, tenta buscar qualquer coluna que contenha "solicita"
       const keys = Object.keys(item);
       for (let key of keys) {
         if (key.toLowerCase().includes('solicita') || key.toLowerCase().includes('solic') || key.toLowerCase().includes('nº')) {
@@ -1388,8 +1399,6 @@ function updateTable() {
       <td>${formatDate(email30)}</td>
     `;
 
-    // DESTAQUE AMARELO:
-    // somente Aba Pendências + Solicitação preenchida + 26 dias desde "Data Início da Pendência"
     const dataInicio = parseDate(dataInicioStr);
     if (dataInicio && isOrigemPendencias(item) && isPendenciaByUsuario(item)) {
       const diasDecorridos = Math.floor((hoje - dataInicio) / (1000 * 60 * 60 * 24));
@@ -1451,7 +1460,7 @@ function refreshData() {
 }
 
 // ===================================
-// DOWNLOAD EXCEL (ATUALIZADO COM Nº SOLICITAÇÃO)
+// DOWNLOAD EXCEL
 // ===================================
 function downloadExcel() {
   if (filteredData.length === 0) {
@@ -1494,7 +1503,7 @@ function downloadExcel() {
 
   ws['!cols'] = [
     { wch: 20 }, // Origem
-    { wch: 15 }, // Nº Solicitação (NOVA COLUNA)
+    { wch: 15 }, // Nº Solicitação
     { wch: 18 }, // Data Solicitação
     { wch: 15 }, // Nº Prontuário
     { wch: 30 }, // Unidade
